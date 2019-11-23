@@ -28,20 +28,20 @@ class Row r where
   -- used to book seats in a row
   updateRow :: r -> Char -> TicketRef -> Maybe r
 
-newtype Row2 = Row2 (Seat, Seat)
-newtype Row2x2 = Row2x2 (Seat, Seat, Seat, Seat)
+type Row2 = (Seat, Seat)
+type Row2x2 = (Seat, Seat, Seat, Seat)
 
 instance Row Row2 where
-  newRow = Row2 (newSeat, newSeat)
-  showRow (Row2 (s1, s2)) = "O " ++ showSeat s1 ++ " " ++ showSeat s2 ++ " O\n"
+  newRow = (newSeat, newSeat)
+  showRow (s1, s2) = "O " ++ showSeat s1 ++ " " ++ showSeat s2 ++ " O\n"
 
-  updateRow (Row2 (Nothing, s2)) 'A' tr = return $ Row2 (return tr, s2)
-  updateRow (Row2 (Just s1s, _)) 'A' _ = Nothing
-  updateRow (Row2 (s1, Nothing)) 'B' tr = return $ Row2 (s1, return tr)
-  updateRow (Row2 (_, Just s2s)) 'B' _ = Nothing
+  updateRow (Nothing, s2) 'A' tr = return (return tr, s2)
+  updateRow (Just s1s, _) 'A' _ = Nothing
+  updateRow (s1, Nothing) 'B' tr = return (s1, return tr)
+  updateRow (_, Just s2s) 'B' _ = Nothing
 
 instance Row Row2x2 where
-  newRow = Row2x2 (newSeat, newSeat, newSeat, newSeat)
+  newRow = (newSeat, newSeat, newSeat, newSeat)
   showRow _ = "O _ _ || _ _ O\n"
 
   updateRow _ _ _ = Nothing
