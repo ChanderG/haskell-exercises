@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 --
 -- Flight data structure
 --
@@ -16,9 +18,6 @@ instance Show Flight where
   show (BombardierQ400 (name, rs)) = name ++ " -> Bombardier Q400\n"
                                      ++ foldl (\acc r -> acc ++ showRow r) "" rs
 
-newFlight :: FlightType -> String -> Flight
-newFlight TypeCessna172 name = Cessna172 (name, newRow :: Row2)
-newFlight TypeBombardierQ400 name = BombardierQ400 (name, replicate 19 (newRow :: Row2x2))
 --
 -- Representing a Row of seats in a Flight
 --
@@ -26,16 +25,26 @@ newFlight TypeBombardierQ400 name = BombardierQ400 (name, replicate 19 (newRow :
 class Row r where
   newRow :: r
   showRow :: r -> String
+  -- used to book seats in a row
+  updateRow :: r -> Char -> TicketRef -> Maybe r
 
 newtype Row2 = Row2 (Seat, Seat)
 newtype Row2x2 = Row2x2 (Seat, Seat, Seat, Seat)
 
 instance Row Row2 where
   newRow = Row2 (newSeat, newSeat)
-  showRow _ = "O _ _ O\n"
+  showRow (Row2 (s1, s2)) = "O " ++ showSeat s1 ++ " " ++ showSeat s2 ++ " O\n"
+
+  updateRow (Row2 (Nothing, s2)) 'A' tr = return $ Row2 (return tr, s2)
+  updateRow (Row2 (Just s1s, _)) 'A' _ = Nothing
+  updateRow (Row2 (s1, Nothing)) 'B' tr = return $ Row2 (s1, return tr)
+  updateRow (Row2 (_, Just s2s)) 'B' _ = Nothing
+
 instance Row Row2x2 where
   newRow = Row2x2 (newSeat, newSeat, newSeat, newSeat)
   showRow _ = "O _ _ || _ _ O\n"
+
+  updateRow _ _ _ = Nothing
 
 --
 -- Representing a single seat in a flight
@@ -45,3 +54,41 @@ type Booking = String
 
 newSeat :: Seat
 newSeat = Nothing
+
+type SeatNumber = (Int, Char)
+
+showSeat :: Seat -> String
+showSeat Nothing = "_"
+showSeat _ = "X"
+
+--
+-- Ticket
+--
+
+type TicketRef = String
+
+--
+-- Business logic / interaction
+--
+
+newFlight :: FlightType -> String -> Flight
+newFlight TypeCessna172 name = Cessna172 (name, newRow :: Row2)
+newFlight TypeBombardierQ400 name = BombardierQ400 (name, replicate 19 (newRow :: Row2x2))
+
+-- Book particular seat
+bookSeat :: SeatNumber -> TicketRef -> Flight -> Maybe Flight
+bookSeat (1, offset) tr (Cessna172 (n, row)) = fmap (\r -> Cessna172 (n, r)) $ updateRow row offset tr
+-- there is only a single row on the Cessna 172
+bookSeat (_, _) _ (Cessna172 _) = Nothing
+-- booking not supported for the Bombardier Q400 yet
+bookSeat _ _ _ = Nothing
+
+--
+-- Usuage
+--
+
+-- Buy a new flight!
+-- let a = newFlight TypeCessna172 "Bird"
+-- Book yourself and a friend a seat!
+-- return a >>= bookSeat (1, 'A') "me" >>= bookSeat (1, 'B') "my friend"
+-- Try booking invalid seats, you'll get back Nothing
